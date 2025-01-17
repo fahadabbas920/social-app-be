@@ -4,29 +4,42 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const registerUser = asyncWrapper(async (req, res) => {
-    const { username, password, role } = req.body;
+  const { username, password, role } = req.body;
+  const { user } = req;
 
-    if (!['Super Admin', 'Admin', 'User'].includes(role)) {
-      return res.status(400).json({ message: 'Invalid role.' });
+  if (!['Super Admin', 'Admin', 'User'].includes(role)) {
+    return res.status(400).json({ message: 'Invalid role.' });
+  }
+
+  const existingUser = await User.findOne({ username });
+  if (existingUser) {
+    return res.status(400).json({ message: 'Username already exists.' });
+  }
+
+  if (role === 'Super Admin') {
+    if (user?.role !== 'Super Admin') {
+      return res.status(403).json({ message: 'Only a Super Admin can create a Super Admin.' });
     }
 
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists.' });
+    const superAdminExists = await User.findOne({ role: 'Super Admin' });
+    if (superAdminExists) {
+      return res.status(403).json({ message: 'Super Admin already exists.' });
     }
-
-    if (role === 'Super Admin') {
-      const superAdminExists = await User.findOne({ role: 'Super Admin' });
-      if (superAdminExists) {
-        return res.status(403).json({ message: 'Super Admin already exists.' });
-      }
+  } else if (role === 'Admin') {
+    if (user?.role !== 'Super Admin') {
+      return res.status(403).json({ message: 'Only a Super Admin can create Admin accounts.' });
     }
+  } else if (role === 'User') {
+    if (!['Super Admin', 'Admin'].includes(user?.role)) {
+      return res.status(403).json({ message: 'Only Admin or Super Admin can create User accounts.' });
+    }
+  }
 
-    const user = new User({ username, password, role });
-    await user.save();
+  const newUser = new User({ username, password, role });
+  await newUser.save();
 
-    res.status(201).json({ message: 'User registered successfully.' });
-})
+  res.status(201).json({ message: `${role} registered successfully.` });
+});
 
 const loginUser = async (req, res) => {
     const { username, password } = req.body;
