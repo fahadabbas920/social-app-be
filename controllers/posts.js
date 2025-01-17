@@ -11,7 +11,14 @@ const posts = asyncWrapper(async (req, res) => {
 
 const getUserPosts = asyncWrapper(async (req, res) => {
   const { userId } = req.params;
-  const posts = await Post.find({ author: userId });
+  const { user } = req;
+  
+  let posts;
+  if (user.role === "Super Admin") {
+    posts = await Post.find().populate("author", "username");
+  } else {
+    posts = await Post.find({ author: userId }).populate("author", "username");
+  }
   return res.status(200).json({ posts });
 });
 
