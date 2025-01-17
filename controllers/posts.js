@@ -14,7 +14,7 @@ const getUserPosts = asyncWrapper(async (req, res) => {
   const { user } = req;
   
   let posts;
-  if (user.role === "Super Admin") {
+  if (user.role === "Admin") {
     posts = await Post.find().populate("author", "username");
   } else {
     posts = await Post.find({ author: userId }).populate("author", "username");
